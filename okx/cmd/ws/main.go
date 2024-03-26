@@ -6,6 +6,7 @@ import (
 	"log"
 	"okex/config"
 	"okex/pkg/ws"
+	"okex/service/okx"
 	"os"
 	"os/signal"
 )
@@ -20,9 +21,12 @@ func main() {
 	//
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
-	//
-	ws.SendMessage()
-	ws.ReadOkxMessage()
+	err = okx.OkxGetKlineChannel()
+	if err != nil {
+		return
+	}
+	ws.MessageRead(config.BusinessConn)
+
 	for {
 		select {
 		case <-interrupt:

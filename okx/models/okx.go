@@ -23,10 +23,16 @@ func GetTimeUnixByOkx() {
 	fmt.Println("Response:", string(resp))
 }
 
-type WsHangQingReq struct {
+type OkxReq struct {
 	Op   string `json:"op"`
-	Args []struct {
-		Channel string `json:"channel"`
-		InstId  string `json:"instId"`
-	} `json:"args"`
+	Args []Args `json:"args"`
+}
+type Args struct {
+	Channel string `json:"channel"`
+	InstId  string `json:"instId"`
+}
+
+type OkxKChannelResp struct {
+	Arg  Args       `json:"arg"`
+	Data [][]string `json:"data"`
 }
