@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	okx.CreateOkxOrder()
 	//初始化ws
 	err := config.InitWs()
 	if err != nil {

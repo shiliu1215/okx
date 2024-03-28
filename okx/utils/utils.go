@@ -1,12 +1,16 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"okex/models"
 	"strconv"
 	"strings"
 	"time"
@@ -83,4 +87,71 @@ func HmacSha256Base64Signer(message string, secretKey string) (string, error) {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
+}
+
+func OkxPost(path string, req interface{}) (code int, body []byte, err error) {
+
+	timestamp := GetIsoTime()
+
+	marshal, _ := json.Marshal(req)
+	preHash := PreHashString(timestamp, "POST", path, string(marshal))
+	sign, err := HmacSha256Base64Signer(preHash, models.SecretKey)
+	httpReq, err := http.NewRequest("POST", models.ApiUrl+path, bytes.NewBuffer(marshal))
+	if err != nil {
+		log.Printf("发送OKX POST请求 失败 url=%v err=%v ", path, err)
+		return 0, nil, err
+	}
+	// 添加请求头
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-simulated-trading", "1") //测试环境
+	httpReq.Header.Set("OK-ACCESS-KEY", models.AccessKey)
+	httpReq.Header.Set("OK-ACCESS-TIMESTAMP", timestamp)
+	httpReq.Header.Set("OK-ACCESS-PASSPHRASE", models.PASSPHRASE)
+	httpReq.Header.Set("OK-ACCESS-SIGN", sign)
+	client := &http.Client{}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		log.Printf("发送OKX POST请求 失败 url=%v err=%v ", path, err)
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("获取body失败 url=%v err=%v ", path, err)
+		return 0, nil, err
+	}
+
+	return resp.StatusCode, body, nil
+}
+func OkxGet(path string) (code int, body []byte, err error) {
+
+	timestamp := GetIsoTime()
+	preHash := PreHashString(timestamp, "GET", path, "")
+	sign, err := HmacSha256Base64Signer(preHash, models.SecretKey)
+	httpReq, err := http.NewRequest("GET", models.ApiUrl+path, nil)
+	if err != nil {
+		log.Printf("发送OKX GET请求 失败 url=%v err=%v ", path, err)
+		return 0, nil, err
+	}
+	// 添加请求头
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-simulated-trading", "1") //测试环境
+	httpReq.Header.Set("OK-ACCESS-KEY", models.AccessKey)
+	httpReq.Header.Set("OK-ACCESS-TIMESTAMP", timestamp)
+	httpReq.Header.Set("OK-ACCESS-PASSPHRASE", models.PASSPHRASE)
+	httpReq.Header.Set("OK-ACCESS-SIGN", sign)
+	client := &http.Client{}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		log.Printf("发送OKX GET请求 失败 url=%v err=%v ", path, err)
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("发送OKX GET请求 失败 url=%v err=%v ", path, err)
+		return 0, nil, err
+	}
+
+	return resp.StatusCode, body, nil
 }
